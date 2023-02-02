@@ -51,6 +51,7 @@ def solve(formula):
                     solver.add_clause([-v0, v1, v2])
                     solver.add_clause([v0, -v1])
                     solver.add_clause([v0, -v2])
+            #print(f"Solving: {last_var} variables...")
             if solver.solve():
                 return Solution(
                     (var_to_fml[abs(v)], (v > 0))
