@@ -40,3 +40,29 @@ def component2d(a, *ini):
             for d in directions
         ])
     return res
+
+def print_vcenter(*args, **kwargs): #
+    if not args:
+        print()
+        return
+    args = [str(arg).split('\n') for arg in args]
+    for arg in args:
+        if len(arg) > 1 and not arg[1]:
+            arg.pop()
+        elif not arg:
+            arg.append('')
+        size = max(len(line) for line in arg)
+        for i,line in enumerate(arg):
+            if len(line) < size:
+                arg[i] = line+' '*(size-len(line))
+
+    num_lines = max(len(arg) for arg in args)
+    for i in range(len(args)):
+        to_add = num_lines - len(args[i])
+        to_add_top = to_add//2
+        to_add_bot = to_add - to_add_top
+        spaces = ' '*len(args[i][0])
+        args[i] = to_add_top*[spaces] + args[i] + to_add_bot*[spaces]
+
+    for line in zip(*args):
+        print(*line, **kwargs)

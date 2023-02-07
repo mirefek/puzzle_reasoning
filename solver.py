@@ -3,17 +3,32 @@ from formula import *
 from collections import defaultdict
 
 class Solution(dict):
-    def __missing__(self, key):
-        if isinstance(key, BoolOr):
-            return self[key.a] or self[key.b]
-        elif isinstance(key, BoolNeg):
-            return not self[key.a]
-        elif isinstance(key, BoolVar):
-            return False
-        elif key == True: return True
-        elif key == False: return False
+    def __init__(self, data):
+        self.d = dict(data)
+        self._np_vectorized = np.vectorize(lambda x: self, otypes = [bool])
+    def __call__(self, fml):
+        if isinstance(fml, BoolFormula):
+            res = self.d.get(fml, None)
+            if res is not None: return res
+            if isinstance(fml, BoolOr):
+                res = self(fml.a) or self(fml.b)
+            elif isinstance(fml, BoolNeg):
+                res = not self(fml.a)
+            elif isinstance(fml, BoolVar):
+                res = False
+            else: raise Exception(f"Unexpected BoolFormula: {type(fml)}")
+            self.d[fml] = res
+            return res
         else:
-            raise KeyError(key)
+            if fml == True: return True
+            elif fml == False: return False
+            elif isinstance(fml, (list, tuple)):
+                return type(fml)(self(x) for x in fml)
+            elif isinstance(fml, np.ndarray):
+                return self._np_vectorized(fml)
+            elif isinstance(fml, BoolObject):
+                return fml.instantiate(self)
+            else: raise Exception(f"Undefined solution for {type(fml)}")
 
 def solve(formula):
     if isinstance(formula, bool_types):
@@ -66,4 +81,4 @@ if __name__ == "__main__":
     print(xs)
     fml = (xs[5] & neg(xs[4])) & count_exact(lits)[5]
     sol = solve(fml)
-    print([sol[x] for x in lits])
+    print(sol(lits))

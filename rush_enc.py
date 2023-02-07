@@ -1,18 +1,19 @@
 from rush_hour import RushHourLevel
 from helpers import *
 from formula import *
-from state_enc import check_invariant, check_init_move, check_limited_solvable, GameState, print_states
+from state_enc import check_invariant, check_init_move, check_limited_solvable, GameState
 import numpy as np
 from solver import solve
 
-class CarState:
-    def __init__(self, plan_size, car_size, sum_before, sum_after):
-        self.car_size = car_size
+class CarState(BoolObject):
+    def initialize(self, plan_size, car_size, sum_before, sum_after):
+
         self.plan_size = plan_size
+        self.car_size = car_size
         # print(f"CarState({plan_size}, {car_size}, {sum_before}, {sum_after})")
 
         first_pos = [
-            BoolVar()
+            self.new(BoolVar)
             for _ in range(plan_size - sum_before - car_size - sum_after + 1)
         ]
         self.first_pos = [False]*sum_before + first_pos + [False]*(car_size + sum_after-1)
@@ -22,12 +23,14 @@ class CarState:
         end_after.reverse()
         self.start_before = [False]*sum_before + start_before + [True]*(car_size + sum_after)
         self.end_after = [True]*(sum_before + car_size) + end_after + [False]*(sum_after)
+
         # print("first_pos", len(first_pos))
         # print("start_before", len(start_before))
         # print("end_after", len(end_after))
         # print("self.first_pos", len(self.first_pos))
         # print("self.start_before", len(self.start_before))
         # print("self.end_after", len(self.end_after))
+
         assert len(self.first_pos) == plan_size
         assert len(self.start_before) == plan_size
         assert len(self.end_after) == plan_size
@@ -36,7 +39,7 @@ class CarState:
         self.end_before = [neg(x) for x in self.end_after]
 
 class RushState(GameState, level = RushHourLevel):
-    def __init__(self, level):
+    def initialize(self, level):
         self.level = level
         self.size = level.size
         self.height, self.width = self.size
@@ -60,11 +63,11 @@ class RushState(GameState, level = RushHourLevel):
         self.occupied_h = np.array([
             self._get_occupied(cars, self.width)
             for cars in self.h_cars
-        ], dtype= object)
+        ], dtype = self.np_type)
         self.occupied_v = np.transpose(np.array([
             self._get_occupied(cars, self.height)
             for cars in self.v_cars
-        ], dtype= object))
+        ], dtype = self.np_type))
         self.is_correct = self.is_correct & reduce_and(
             neg(x) | neg(y)
             for x,y in zip(self.occupied_h.flat, self.occupied_v.flat)
@@ -96,11 +99,11 @@ class RushState(GameState, level = RushHourLevel):
         occupied_h = np.array([
             self._get_shift_occupied(cars1, cars2, self.width)
             for cars1, cars2 in zip(self.h_cars, other.h_cars)
-        ], dtype= object)
+        ], dtype = self.np_type)
         occupied_v = np.transpose(np.array([
             self._get_shift_occupied(cars1, cars2, self.height)
             for cars1, cars2 in zip(self.v_cars, other.v_cars)
-        ], dtype= object))
+        ], dtype = self.np_type))
         no_jump = self.is_correct & reduce_and(
             neg(x) | neg(y)
             for x,y in zip(occupied_h.flat, occupied_v.flat)
@@ -108,22 +111,22 @@ class RushState(GameState, level = RushHourLevel):
 
         return one_row_moves & no_jump
 
-    def to_lines(self, solution):
+    def to_str(self):
         ascii_plan = np.array(['.', 'x'])[self.level.walls.astype(int)]
         for letter,(hv,i,j) in self.level.letter_to_car_index.items():
             car = self.cars[hv][i][j]
             if hv == 0:
                 y = i
                 for x,b in enumerate(car.all_pos):
-                    if solution[b]: ascii_plan[y,x] = letter
+                    if b: ascii_plan[y,x] = letter
             else:
                 x = i
                 for y,b in enumerate(car.all_pos):
-                    if solution[b]: ascii_plan[y,x] = letter                
-        return [
-            "".join(line)
+                    if b: ascii_plan[y,x] = letter
+        return '\n'.join(
+            ''.join(line)
             for line in ascii_plan
-        ]
+        )
 
     def _init_row(self, cars, dim, walls):
         wall_ids = [i for i,x in enumerate(walls) if x]
@@ -152,7 +155,7 @@ class RushState(GameState, level = RushHourLevel):
         sums_before = np.concatenate([[0], cum_sizes[:-1]])
         sums_after = sum_sizes - sizes - sums_before
         res = [
-            CarState(dim, size, sum_before + start, sum_after + (dim-end))
+            self.new(CarState, dim, size, sum_before + start, sum_after + (dim-end))
             for size, sum_before, sum_after in zip(sizes, sums_before, sums_after)
         ]
         self.all_cars_list.extend(res)

@@ -43,14 +43,14 @@ def move_horizontal(state1, state2, walls):
     )
 
 class RobotState(GameState, level = RobotsLevel):
-    def __init__(self, level):
+    def initialize(self, level):
         self.level = level
-        self.all_robots = np.empty(level.size, dtype = object)
+        self.all_robots = np.empty(level.size, dtype = self.np_type)
         self.main_robot = np.empty_like(self.all_robots)
         for y in range(level.height):
             for x in range(level.width):
-                self.all_robots[y,x] = BoolVar()
-                self.main_robot[y,x] = BoolVar()
+                self.all_robots[y,x] = self.new(BoolVar)
+                self.main_robot[y,x] = self.new(BoolVar)
 
         # calculate is_correct
         x = count_exact(self.all_robots.flat)[len(level.robot_names)]
@@ -84,22 +84,19 @@ class RobotState(GameState, level = RobotsLevel):
         )
         return x        
 
-    def to_lines(self, solution):
-        solution_f = np.vectorize(lambda x: solution[x], otypes = [bool])
-        main_robot = solution_f(self.main_robot)
-        all_robots = solution_f(self.all_robots)
+    def to_str(self):
         ascii_plan = np.full([2*self.level.height+1, 2*self.level.width+1], '..')
         ascii_plan[::2,::2] = "+"
         ascii_h_walls = np.array(["  ", "--"])[self.level.board.h_walls.astype(int)]
         ascii_v_walls = np.array([" ", "|"])[self.level.board.v_walls.astype(int)]
         ascii_plan[::2,1::2] = ascii_h_walls
         ascii_plan[1::2,::2] = ascii_v_walls
-        ascii_robots = np.array(["  ", "()", "{}", "[]"])[2*main_robot + all_robots]
+        ascii_robots = np.array(["  ", "()", "{}", "[]"])[2*self.main_robot + self.all_robots]
         ascii_plan[1::2,1::2] = ascii_robots
-        return [
-            "".join(line)
+        return '\n'.join(
+            ''.join(line)
             for line in ascii_plan
-        ]
+        )
 
 def check_example_invariant():
 

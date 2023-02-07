@@ -22,6 +22,52 @@ class LazyArray:
         while i < len(self.data):
             yield self[i]
 
+# Instantiatable object
+class BoolObject:
+    def __init__(self, *args, template = None, subobject_generator = None, **kwargs):
+        self._input_args = args
+        self._input_kwargs = kwargs
+        self._subobject_generator = subobject_generator
+        if not self.instantiated:
+            self._recorded_new_objects = []
+
+        self.initialize(*args, **kwargs)
+
+        if self.instantiated:
+            assert not any(True for _ in self._subobject_generator)
+
+    def initialize(self, *args, **kwargs):
+        raise Exception("Not implemented")
+
+    @property
+    def instantiated(self):
+        return self._subobject_generator is not None
+    @property
+    def np_type(self):
+        if self.instantiated: return bool
+        else: return object
+
+    def instantiate(self, solution):
+        return type(self)(
+            *self._input_args,
+            subobject_generator = self.get_subobject_generator(solution),
+            **self._input_kwargs)
+    def get_subobject_generator(self, solution):
+        for cls, args, res in self._recorded_new_objects:
+            yield cls, args, solution(res)
+    def new(self, cls, *args):
+        if self._subobject_generator is None:
+            res = cls(*args)
+            self._recorded_new_objects.append((cls, args, res))
+        else:
+            ori_cls, ori_args, res = next(self._subobject_generator)
+            assert ori_cls == cls and ori_args == args
+        return res
+
+    def __str__(self):
+        if self.instantiated: return self.to_str()
+        else: return repr(self)
+
 class BoolFormula:
     def __or__(self, other):
         if isinstance(other, bool_types):

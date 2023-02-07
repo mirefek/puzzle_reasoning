@@ -2,7 +2,7 @@ import os
 from soko_enc import *
 from helpers import *
 
-def boxes_state(state, *boxes, sk = None, nsk = None, vals = None, comp_block = None):
+def boxes_state(state, *boxes, sk = None, nsk = None, comp_block = None):
     if sk is not None or nsk is not None:
         assert not (sk is None and nsk is None)
         if sk is None:
@@ -29,7 +29,7 @@ def boxes_state(state, *boxes, sk = None, nsk = None, vals = None, comp_block = 
     )
     return cond_sk & cond_boxes
 
-def simple_deadlocks(state, vals = None):
+def simple_deadlocks(state):
     reachable = np.zeros_like(state.level.storages)
     stack = list(positions_true(state.level.storages))
     while stack:
@@ -127,7 +127,7 @@ def cave_right_bottom(state):
         left, right, neg(reduce_or(state.sk[10,7:13]))
     )
 
-def cave_right(state, vals = None):
+def cave_right(state):
     box_count_mask = np.zeros(state.level.size, dtype = bool)
     box_count_mask[7:11,7:14] = True
     box_count_mask &= ~state.level.walls
@@ -155,7 +155,7 @@ def cave_right(state, vals = None):
     res = cave_start | cave_right_upper(state) | cave_right_bottom(state)
     return res
 
-def cave_up(state, vals = None):
+def cave_up(state):
     res_A = boxes_state(
         state,
         (2,5), (4,5), (6,5), (6,6),
@@ -194,22 +194,13 @@ def cave_left_upper(state):
     res = res | boxes_state(state, (3,2), (3,3), nsk = (1,2))
     return res
 
-def cave_left(state, vals = None):
+def cave_left(state):
     cond = cave_left_upper(state)
     mask = np.zeros_like(state.level.walls)
     mask[1:9,1:4] = True
     mask &= ~state.level.walls
     mask2 = np.array(mask)
     mask[7,3] = False
-    if vals is not None:
-        x = reduce_or(
-            state.boxes[7,3],
-            neg(state.sk[7,3]) & reduce_or(
-                state.boxes[7,4],
-                neg(state.sk[7,4]) & state.boxes[7,5] & state.boxes[6,5],
-            ),
-        )
-        y = at_least(state.boxes[mask])[4]
 
     cond = cond | reduce_and(
         neg(reduce_or(state.sk[mask])),
@@ -265,7 +256,7 @@ def cave_left(state, vals = None):
     )
     return cond
 
-def specific_deadlocks(state, vals):
+def specific_deadlocks(state):
     res = reduce_or(
         reduce_and(
             reduce_or(state.boxes[2:4,2]),
@@ -282,8 +273,8 @@ def specific_deadlocks(state, vals):
             at_least(state.boxes[1:9,1:5].flat)[4],
         ),
         cave_up(state),
-        cave_right(state, vals),
-        cave_left(state, vals),
+        cave_right(state),
+        cave_left(state),
     )
     box_count_mask = np.zeros(state.level.size, dtype = bool)
     box_count_mask[7:11,7:14] = True
@@ -294,13 +285,13 @@ def specific_deadlocks(state, vals):
         at_least(state.boxes[box_count_mask])[5],
         at_most(state.boxes[8,6:9])[2],
     )
-    if vals is not None: print(vals[res])
+    if state.instantiated: print(res)
     res = res | boxes_state(
         state,
         (2,5), (4,5), (6,5), (7,6), (7,7),
         sk = (7,4),
     )
-    if vals is not None: print(vals[res])
+    if state.instantiated: print(res)
     # res = res | boxes_state(
     #     state,
     #     (2,5), (4,5), (6,5), (7,7), (7,8),
@@ -309,7 +300,7 @@ def specific_deadlocks(state, vals):
 
     return res
 
-def inv26(state, vals = None):
+def inv26(state):
     unreachable = reduce_and(state.boxes[8:10, 12])
     ini_boxes = np.array(state.level.boxes)
     ini_boxes[3:5,8] = False
@@ -317,7 +308,7 @@ def inv26(state, vals = None):
     sk = state.level.storekeeper
     ini = reduce_or(
         boxes_state(state, (3,8), (4,8), *ini_boxes, sk = sk),
-        boxes_state(state, (4,7), *ini_boxes, sk = sk, vals = vals),
+        boxes_state(state, (4,7), *ini_boxes, sk = sk),
         boxes_state(state, (4,6), *ini_boxes, sk = sk),
     )
     mask = np.zeros_like(state.level.boxes)
@@ -358,7 +349,7 @@ def inv26(state, vals = None):
     ))
     cond = cond & at_most(state.boxes[8:10,6:9].flat)[2]
     cond = cond & neg(reduce_and(state.boxes[7,6:8]))
-    cond = cond | simple_deadlocks(state, vals) | ini | specific_deadlocks(state, vals)
+    cond = cond | simple_deadlocks(state) | ini | specific_deadlocks(state)
     return cond & neg(unreachable)
     
 if __name__ == "__main__":

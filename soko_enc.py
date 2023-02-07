@@ -63,18 +63,18 @@ def move_horizontal(boxes1, boxes2, storekeeper1, storekeeper2):
     )
 
 class SokoState(GameState, level = SokoLevel):
-    def __init__(self, level):
+    def initialize(self, level):
         self.level = level
-        self.sk = np.empty(level.size, dtype = object)
-        self.boxes = np.empty(level.size, dtype = object)
+        self.sk = np.empty(level.size, dtype = self.np_type)
+        self.boxes = np.empty(level.size, dtype = self.np_type)
         for y in range(level.height):
             for x in range(level.width):
                 if self.level.walls[y,x]:
                     self.sk[y,x] = False
                     self.boxes[y,x] = False
                 else:
-                    self.sk[y,x] = BoolVar()
-                    self.boxes[y,x] = BoolVar()
+                    self.sk[y,x] = self.new(BoolVar)
+                    self.boxes[y,x] = self.new(BoolVar)
 
         # calculate is_correct
         x = count_exact(self.sk.flat)[1]
@@ -95,17 +95,14 @@ class SokoState(GameState, level = SokoLevel):
             move_horizontal(self.boxes.T, other.boxes.T, self.sk.T, other.sk.T)
         )
 
-    def to_lines(self, solution):
-        solution_f = np.vectorize(lambda x: solution[x], otypes = [bool])
-        sk = solution_f(self.sk)
-        boxes = solution_f(self.boxes)
+    def to_str(self):
         ascii_plan = np.array([' ', '$', '@', '!', '#'])[
-            4*self.level.walls + 2*sk + boxes
+            4*self.level.walls + 2*self.sk + self.boxes
         ]
-        return [
-            "".join(line)
+        return '\n'.join(
+            ''.join(line)
             for line in ascii_plan
-        ]
+        )
 
 def check_example_invariant():
 
