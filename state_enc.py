@@ -1,6 +1,6 @@
 from helpers import print_vcenter
 from formula import *
-from solver import solve
+from solver import solve, solve_all
 
 class GameState(BoolObject):
     _level_to_state_class = dict()
@@ -65,19 +65,21 @@ def check_invariant(level, invariant, debug = False, **kwargs):
             raise Exception(f"Unexpected example type '{ex_type}'")
         return False
 
-def check_init_move(level):
+def check_init_moves(level):
     state1 = GameState.from_level(level)
     state2 = GameState.from_level(level)
     cond = state1.is_correct & state2.is_correct
     cond = cond & state1.is_init
     cond = cond & state1.transition(state2)
 
-    sol = solve(cond)
-    if sol is not None:
-        print("Example transition:")
+    move_exists = False
+    print("Initial moves:")
+    for sol in solve_all(cond):
         print_vcenter(sol(state1), ' ---> ', sol(state2))
-    else:
-        print("No initial move available")
+        print()
+        move_exists = True
+
+    if not move_exists: print("No initial move available")
 
 def check_limited_solvable(level, num_moves, states_in_row = 4):
     states = [

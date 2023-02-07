@@ -1,6 +1,6 @@
 from robots import *
 from formula import *
-from state_enc import check_invariant, check_init_move, check_limited_solvable, GameState
+from state_enc import check_invariant, check_init_moves, check_limited_solvable, GameState
 
 def row_move_right(state1, state2, walls):
     extra1 = [x & neg(y) for x,y in zip(state1, state2)]
@@ -125,7 +125,7 @@ def check_example_transition():
 
     fname = "./robots_levels/unsol_0002.rr"
     level = RobotsLevel.load_from_file(fname)
-    check_init_move(level)
+    check_init_moves(level)
 
 
 def check_example_solvable():

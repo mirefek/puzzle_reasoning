@@ -1,7 +1,7 @@
 from sokoban import SokoLevel
 from helpers import *
 from formula import *
-from state_enc import check_invariant, check_init_move, GameState
+from state_enc import check_invariant, check_init_moves, GameState
 import numpy as np
 
 def row_move(boxes1, boxes2, storekeeper1, storekeeper2):
@@ -118,8 +118,8 @@ def check_example_transition():
 
     fname = "./soko_unsolvable.xsb"
     levels = SokoLevel.all_from_file(fname)
-    level = levels[1]
-    check_init_move(level)
+    level = levels[0]
+    check_init_moves(level)
 
 if __name__ == "__main__":
     check_example_transition()

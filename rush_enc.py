@@ -1,7 +1,7 @@
 from rush_hour import RushHourLevel
 from helpers import *
 from formula import *
-from state_enc import check_invariant, check_init_move, check_limited_solvable, GameState
+from state_enc import check_invariant, check_init_moves, check_limited_solvable, GameState
 import numpy as np
 from solver import solve
 
@@ -194,7 +194,7 @@ def check_example_transition():
     with open(fname) as f:
         level_lines = list(f)
     level = RushHourLevel.from_line(level_lines[0])
-    check_init_move(level)
+    check_init_moves(level)
 
 def check_example_invariants():
 
