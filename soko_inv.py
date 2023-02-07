@@ -80,12 +80,6 @@ def cave_right_upper(state):
             state.boxes[7,12] | state.boxes[8,12]
         )
     )
-    right = right | boxes_state(
-        state,
-        (8,11), (8,12), (9,12),
-        nsk = (8,13),
-        comp_block = (7,10),
-    )
     return reduce_or(
         left & right & neg(state.sk[7,10]),
         left & state.boxes[7,10],
@@ -133,7 +127,7 @@ def cave_right_bottom(state):
         left, right, neg(reduce_or(state.sk[10,7:13]))
     )
 
-def cave_right(state):
+def cave_right(state, vals = None):
     box_count_mask = np.zeros(state.level.size, dtype = bool)
     box_count_mask[7:11,7:14] = True
     box_count_mask &= ~state.level.walls
@@ -141,43 +135,182 @@ def cave_right(state):
     nsk_mask = np.array(box_count_mask, dtype = bool)
     box_count_mask[7:9,8] = False
     cnt = at_most(state.boxes[box_count_mask])
+    nsk = neg(reduce_or(state.sk[nsk_mask]))
     cave_start = reduce_and(
         state.boxes[7,7] | state.boxes[7,8],
         state.boxes[8,7] | state.boxes[8,8],
         neg(cnt[3]) | (neg(cnt[2]) & state.boxes[8,7] & state.boxes[8,8]),
-        neg(reduce_or(state.sk[nsk_mask])),
+        nsk,
     )
-    cave_end = reduce_or(
-        boxes_state(state, (7,12), (8,12), (9,12), nsk = (8,13)),
-        boxes_state(state, (7,11), (8,12), (9,12), nsk = (8,13)),
-    )
-    return cave_start | cave_right_upper(state) | cave_right_bottom(state) | cave_end
+    nsk_mask = np.array(box_count_mask, dtype = bool)
 
-def cave_left_up(state):
+    # cave_start = cave_start | reduce_and(
+    #     state.boxes[8,6],
+    #     state.boxes[8,7],
+    #     state.boxes[7,7] | state.boxes[7,8],
+    #     neg(cnt[2]),
+    #     nsk,
+    # )
+
+    res = cave_start | cave_right_upper(state) | cave_right_bottom(state)
+    return res
+
+def cave_up(state, vals = None):
+    res_A = boxes_state(
+        state,
+        (2,5), (4,5), (6,5), (6,6),
+        nsk = (4,6),
+    )
+    res_B = reduce_and(
+        reduce_or(state.boxes[4:6,5]),
+        reduce_or(state.boxes[4:6,6]),
+        reduce_or(state.boxes[2:4,5]),
+        boxes_state(
+            state,
+            nsk = (3,5),
+            comp_block = [(5,5), (5,6)],
+        ),
+    )
+    res_C = reduce_and(
+        reduce_or(state.boxes[2:4,5]),
+        reduce_or(state.boxes[2:4,6]),
+        boxes_state(
+            state,
+            nsk = (1,5),
+            comp_block = [(3,5), (3,6)],
+        ),
+    )
+    return res_A | res_B | res_C
+
+def cave_left_upper(state):
     res = state.boxes[6,3]
     for i in range(5,1,-1):
         res = res & state.boxes[i,2] & neg(state.sk[i,3])
         if i > 2: res = res | state.boxes[i,3]
-    return neg(reduce_or(state.sk[1,2:4])) & (res | (
+    res = neg(reduce_or(state.sk[1,2:4])) & (res | (
         state.boxes[3,2] & state.boxes[2,3] & neg(state.sk[2,2])
     ))
+    res = res | boxes_state(state, (2,2), (2,3), nsk = (1,2))
+    res = res | boxes_state(state, (3,2), (3,3), nsk = (1,2))
+    return res
 
-def cave_mid_up(state):
-    return False
-    # TODO
+def cave_left(state, vals = None):
+    cond = cave_left_upper(state)
+    mask = np.zeros_like(state.level.walls)
+    mask[1:9,1:4] = True
+    mask &= ~state.level.walls
+    mask2 = np.array(mask)
+    mask[7,3] = False
+    if vals is not None:
+        x = reduce_or(
+            state.boxes[7,3],
+            neg(state.sk[7,3]) & reduce_or(
+                state.boxes[7,4],
+                neg(state.sk[7,4]) & state.boxes[7,5] & state.boxes[6,5],
+            ),
+        )
+        y = at_least(state.boxes[mask])[4]
+
+    cond = cond | reduce_and(
+        neg(reduce_or(state.sk[mask])),
+        reduce_or(
+            reduce_and(
+                at_least(state.boxes[mask])[4],
+                reduce_or(
+                    state.boxes[7,3],
+                    neg(state.sk[7,3]) & reduce_or(
+                        state.boxes[7,4],
+                        reduce_and(
+                            neg(state.sk[7,4]),
+                            state.boxes[7,5],
+                            reduce_or(
+                                state.boxes[6,5],
+                                neg(state.sk[8,5]) & state.boxes[8,6],
+                            )
+                        )
+                    ),
+                ),
+            ),
+            state.boxes[7,3] & state.boxes[7,4],
+        )
+    )
+    mask[7,2] = False
+    cond = cond | reduce_and(
+        state.boxes[7,2],
+        at_least(state.boxes[mask])[4],
+    )
+    cond = cond | boxes_state(state, (6,2), (7,2))
+    cond = cond | boxes_state(state, (6,3), (7,2), sk = (6,2))
+    cond = cond | boxes_state(state, (7,2), (7,3), sk = (6,2))
+    cond = cond | reduce_and(
+        at_least(state.boxes[2:7,2:4].flat)[5],
+        (
+            boxes_state(state, nsk = (3,3), comp_block = [(6,2), (6,3)])
+            | (neg(state.boxes[6,3]) & neg(state.boxes[5,3]) &
+               state.sk[5,3]
+            )
+        )
+    )
+    cond = cond | reduce_and(
+        neg(reduce_or(state.sk[4:6,3])),
+        reduce_and(
+            state.boxes[4:6,2],
+            reduce_or(state.boxes[3:5,3]),
+            reduce_or(state.boxes[5:7,3]),
+        )
+    )
+    cond = cond | reduce_and(
+        neg(reduce_or(state.sk[3:7,1])),
+        state.boxes[3:7,2],
+    )
+    return cond
 
 def specific_deadlocks(state, vals):
-    return reduce_or(
+    res = reduce_or(
         reduce_and(
             reduce_or(state.boxes[2:4,2]),
             reduce_or(state.boxes[2:4,3]),
             neg(reduce_or(state.sk[1:3,2:4])),
         ),
-        cave_right(state),
-        cave_left_up(state),
+        reduce_and(
+            boxes_state(
+                state,
+                (7,5), (6,6),
+                sk = (7,6),
+            ),
+            at_least(state.boxes[1:6,5])[2],
+            at_least(state.boxes[1:9,1:5].flat)[4],
+        ),
+        cave_up(state),
+        cave_right(state, vals),
+        cave_left(state, vals),
     )
+    box_count_mask = np.zeros(state.level.size, dtype = bool)
+    box_count_mask[7:11,7:14] = True
+    box_count_mask[7,6] = True
+    box_count_mask &= ~state.level.walls
+    res = res | reduce_and(
+        boxes_state(state, (2,5), (4,5), (6,5), (7,5), sk = (7,4)),
+        at_least(state.boxes[box_count_mask])[5],
+        at_most(state.boxes[8,6:9])[2],
+    )
+    if vals is not None: print(vals[res])
+    res = res | boxes_state(
+        state,
+        (2,5), (4,5), (6,5), (7,6), (7,7),
+        sk = (7,4),
+    )
+    if vals is not None: print(vals[res])
+    # res = res | boxes_state(
+    #     state,
+    #     (2,5), (4,5), (6,5), (7,7), (7,8),
+    #     sk = (7,4),
+    # )
+
+    return res
 
 def inv26(state, vals = None):
+    unreachable = reduce_and(state.boxes[8:10, 12])
     ini_boxes = np.array(state.level.boxes)
     ini_boxes[3:5,8] = False
     ini_boxes = positions_true(ini_boxes)
@@ -193,9 +326,40 @@ def inv26(state, vals = None):
     mask &= ~state.level.walls
     cond = neg(at_most(state.boxes[mask])[11])
     mask[7:,7:] = False
-    cond = cond & neg(at_most(state.boxes[mask])[6])
+    cond = cond & at_least(state.boxes[mask])[7]
+    mask[:,:] = 0
+    mask[2:8,5] = True
+    mask[8,6] = True
+    cond = cond & reduce_and(
+        at_least(state.boxes[mask])[3],
+        implies(
+            state.boxes[7,5],
+            (
+                boxes_state(state, nsk = (5,2), comp_block = (7,5)) |
+                at_most(state.boxes[2:8,2:6].flat)[3]
+            )
+        ),
+    )
+    cond = cond & implies(
+        at_most(state.boxes[2:8,5].flat)[2],
+        at_least(state.boxes[2:8,2:5].flat)[4],
+        neg(reduce_or(
+            state.boxes[7,6],
+            boxes_state(state, (7,7), (8,6), nsk = (8,7))
+        )),
+    )
+    cond = cond & implies(
+        state.boxes[7,6],
+        boxes_state(state, nsk = (6,6), comp_block = [(7,5), (7,6)]),
+    )
+    cond = cond & neg(reduce_and(
+        boxes_state(state, (7,4), sk = (7,3)),
+        at_least(state.boxes[2:8,2:4].flat)[4],
+    ))
+    cond = cond & at_most(state.boxes[8:10,6:9].flat)[2]
+    cond = cond & neg(reduce_and(state.boxes[7,6:8]))
     cond = cond | simple_deadlocks(state, vals) | ini | specific_deadlocks(state, vals)
-    return cond
+    return cond & neg(unreachable)
     
 if __name__ == "__main__":
 
